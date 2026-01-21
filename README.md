@@ -28,18 +28,15 @@ Coffee Dice is a Flutter application designed to break your brewing routine. Can
     flutter run
     ```
 
-## 👨‍💻 About the Author
-I am a former Barista transitioning into Software Development. This is my first mobile application project! I built this to combine my two passions: Coffee and Code.
-
 ## 🔮 Future Plans
 
 ### ✅ Completed
 - [x] **Dark Mode:** Added a "Dark Roast" theme for late-night brewing.
-- [x] **Coffee Journal:** Users can now log and save their recipes.
 - [x] **Design Overhaul:** Implemented a dynamic Latte/Espresso UI theme.
 
 ### 🚧 Coming Soon
 - [ ] **Persistent Storage:** Save journal entries to the phone's memory (currently resets on restart).
+- [ ] **Coffee Journal:** Users can now log and save their recipes.
 - [ ] **Brew Timer:** A built-in stopwatch/countdown for the brewing process.
 - [ ] **Sound Effects:** Add satisfying ASMR coffee sounds (grinding, pouring) when rolling the dice.
 - [ ] **Share Your Brew:** Generate a cool image of your recipe to share on Instagram/Telegram.
