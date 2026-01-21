@@ -35,3 +35,4 @@ I am a former Barista transitioning into Software Development. This is my first 
 * [ ] Add a "Save Favorite Recipe" feature.
 * [ ] Add sound effects for the dice roll.
 * [ ] Dark Mode for late-night brewing.
+* [ ] Big update of the design for application.
