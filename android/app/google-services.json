@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "41928802792",
+    "project_id": "coffee-dice",
+    "storage_bucket": "coffee-dice.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:41928802792:android:b3b146f4257b7cd998245d",
+        "android_client_info": {
+          "package_name": "com.example.coffee_dice"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtmOZ0m37o9q6BEKBy0YP4hOxVHmRgay4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
