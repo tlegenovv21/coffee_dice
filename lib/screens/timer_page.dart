@@ -27,7 +27,10 @@ class _TimerPageState extends State<TimerPage> {
   // Convert string "3:00" or "3" to seconds
   void _parseTime() {
     try {
-      String timeText = widget.recipe.brewTime.replaceAll(RegExp(r'[^0-9:]'), '');
+      String timeText = widget.recipe.brewTime.replaceAll(
+        RegExp(r'[^0-9:]'),
+        '',
+      );
       if (timeText.contains(':')) {
         List<String> parts = timeText.split(':');
         int min = int.parse(parts[0]);
@@ -92,9 +95,16 @@ class _TimerPageState extends State<TimerPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("BREWING", style: TextStyle(letterSpacing: 3, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+            Text(
+              "BREWING",
+              style: TextStyle(
+                letterSpacing: 3,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[500],
+              ),
+            ),
             const SizedBox(height: 40),
-            
+
             // --- THE CIRCULAR TIMER ---
             CircularPercentIndicator(
               radius: 120.0,
@@ -103,8 +113,18 @@ class _TimerPageState extends State<TimerPage> {
               center: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(timerText, style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: theme.textTheme.bodyMedium?.color)),
-                  Text(isRunning ? "Brewing..." : "Paused", style: TextStyle(color: Colors.grey[500])),
+                  Text(
+                    timerText,
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyMedium?.color,
+                    ),
+                  ),
+                  Text(
+                    isRunning ? "Brewing..." : "Paused",
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
                 ],
               ),
               progressColor: const Color(0xFF8D6E63), // Coffee Color
@@ -113,9 +133,9 @@ class _TimerPageState extends State<TimerPage> {
               animation: true,
               animateFromLastPercent: true,
             ),
-            
+
             const SizedBox(height: 60),
-            
+
             // --- CONTROLS ---
             SizedBox(
               height: 60,
@@ -125,9 +145,13 @@ class _TimerPageState extends State<TimerPage> {
                 icon: Icon(isRunning ? Icons.pause : Icons.play_arrow),
                 label: Text(isRunning ? "PAUSE" : "START BREW"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isRunning ? Colors.orange[800] : const Color(0xFF3E2723),
+                  backgroundColor: isRunning
+                      ? Colors.orange[800]
+                      : const Color(0xFF3E2723),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
               ),
             ),
@@ -141,7 +165,7 @@ class _TimerPageState extends State<TimerPage> {
                 });
               },
               child: const Text("Reset", style: TextStyle(color: Colors.grey)),
-            )
+            ),
           ],
         ),
       ),
