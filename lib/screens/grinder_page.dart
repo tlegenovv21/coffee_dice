@@ -47,9 +47,52 @@ class _GrinderPageState extends State<GrinderPage> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Load Grinder List
     List<String>? jsonList = prefs.getStringList('saved_grinders');
-    if (jsonList != null) {
+
+    if (jsonList == null || jsonList.isEmpty) {
+      // --- ADD DEFAULTS IF LIST IS EMPTY ---
+      List<Grinder> defaults = [
+        Grinder(
+          id: "def1",
+          brand: "Baratza",
+          model: "Encore",
+          type: GrinderType.conicalBurr,
+          adjustmentType: AdjustmentType.stepped,
+          minRange: 0,
+          maxRange: 40,
+        ),
+        Grinder(
+          id: "def2",
+          brand: "Timemore",
+          model: "C2/C3",
+          type: GrinderType.conicalBurr,
+          adjustmentType: AdjustmentType.stepped,
+          minRange: 0,
+          maxRange: 36,
+        ),
+        Grinder(
+          id: "def3",
+          brand: "Comandante",
+          model: "C40",
+          type: GrinderType.conicalBurr,
+          adjustmentType: AdjustmentType.stepped,
+          minRange: 0,
+          maxRange: 45,
+        ),
+        Grinder(
+          id: "def4",
+          brand: "Fellow",
+          model: "Ode",
+          type: GrinderType.flatBurr,
+          adjustmentType: AdjustmentType.stepped,
+          minRange: 1,
+          maxRange: 11,
+        ),
+      ];
+
+      myGrinders = defaults;
+      _saveData(); // Save them immediately
+    } else {
       setState(() {
         myGrinders = jsonList
             .map((str) => Grinder.fromJson(jsonDecode(str)))
@@ -57,7 +100,6 @@ class _GrinderPageState extends State<GrinderPage> {
       });
     }
 
-    // Load Selected Grinder
     setState(() {
       selectedGrinderId = prefs.getString('selected_grinder_id');
     });

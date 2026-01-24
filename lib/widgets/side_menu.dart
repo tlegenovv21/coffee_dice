@@ -10,7 +10,7 @@ class SideMenu extends StatefulWidget {
   final String bio;
   final String pronouns;
   final bool isLightMode;
-  final String currentGrinderName; // Passed from Home Page
+  final String currentGrinderName;
   final VoidCallback onToggleTheme;
   final VoidCallback onEditProfile;
   final VoidCallback onShowStats;
@@ -36,7 +36,6 @@ class SideMenu extends StatefulWidget {
 }
 
 class _SideMenuState extends State<SideMenu> {
-  // We keep useCelsius here so the toggle remembers its state locally
   bool useCelsius = true;
 
   @override
@@ -49,64 +48,77 @@ class _SideMenuState extends State<SideMenu> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       useCelsius = prefs.getBool('pref_celsius') ?? true;
-      // We DO NOT load grinder here anymore. We use the one passed from Home Page.
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Standard color for icons/text to avoid purple
+    final Color coffeeColor = const Color(0xFF3E2723);
+    final Color iconColor = Colors.grey[600]!;
 
     return Drawer(
       backgroundColor: theme.scaffoldBackgroundColor,
       child: Column(
         children: [
-          // --- HEADER ---
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(color: Color(0xFF3E2723)),
-            accountName: Column(
+          // --- IMPROVED HEADER ---
+          Container(
+            padding: const EdgeInsets.only(
+              top: 50,
+              bottom: 20,
+              left: 20,
+              right: 20,
+            ),
+            width: double.infinity,
+            color: coffeeColor, // Solid Coffee Background
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                CircleAvatar(
+                  radius: 35,
+                  backgroundColor: Colors.white,
+                  backgroundImage: widget.avatarUrl.isNotEmpty
+                      ? NetworkImage(widget.avatarUrl)
+                      : null,
+                  child: widget.avatarUrl.isEmpty
+                      ? Text(
+                          widget.nickname.isNotEmpty
+                              ? widget.nickname[0].toUpperCase()
+                              : "C",
+                          style: TextStyle(fontSize: 30, color: coffeeColor),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 15),
                 Text(
                   "${widget.nickname} ${widget.pronouns.isNotEmpty ? '(${widget.pronouns})' : ''}",
                   style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
                   ),
                 ),
+                const SizedBox(height: 5),
+                Text(
+                  widget.currentGrinderName.isNotEmpty
+                      ? "⚙️ ${widget.currentGrinderName}"
+                      : widget.email,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                ),
                 if (widget.bio.isNotEmpty)
-                  Text(
-                    widget.bio,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.white70,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      widget.bio,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
               ],
-            ),
-            accountEmail: Text(
-              widget.currentGrinderName.isNotEmpty
-                  ? "Grinder: ${widget.currentGrinderName}"
-                  : widget.email,
-            ),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              backgroundImage: widget.avatarUrl.isNotEmpty
-                  ? NetworkImage(widget.avatarUrl)
-                  : null,
-              child: widget.avatarUrl.isEmpty
-                  ? Text(
-                      widget.nickname.isNotEmpty
-                          ? widget.nickname[0].toUpperCase()
-                          : "C",
-                      style: const TextStyle(
-                        fontSize: 30,
-                        color: Color(0xFF3E2723),
-                      ),
-                    )
-                  : null,
             ),
           ),
 
@@ -115,7 +127,7 @@ class _SideMenuState extends State<SideMenu> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                _buildSectionHeader(theme, "BREWING"),
+                _buildSectionHeader("BREWING"),
                 SwitchListTile(
                   title: const Text("Units: °C / °F"),
                   subtitle: Text(
@@ -123,7 +135,7 @@ class _SideMenuState extends State<SideMenu> {
                   ),
                   value: useCelsius,
                   activeColor: const Color(0xFF8D6E63),
-                  secondary: const Icon(Icons.thermostat),
+                  secondary: Icon(Icons.thermostat, color: iconColor),
                   onChanged: (val) async {
                     setState(() => useCelsius = val);
                     final prefs = await SharedPreferences.getInstance();
@@ -131,33 +143,37 @@ class _SideMenuState extends State<SideMenu> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.build),
+                  leading: Icon(Icons.settings, color: iconColor),
                   title: const Text("My Grinder"),
-                  // FIX: Use 'widget.currentGrinderName' instead of local variable
-                  subtitle: Text(widget.currentGrinderName),
+                  subtitle: Text(
+                    widget.currentGrinderName,
+                    style: TextStyle(color: coffeeColor),
+                  ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                   onTap: () {
                     Navigator.pop(context);
                     widget.onShowGrinder();
                   },
                 ),
+
                 const Divider(),
-                _buildSectionHeader(theme, "MY DATA"),
+                _buildSectionHeader("MY DATA"),
                 ListTile(
-                  leading: const Icon(Icons.bar_chart),
+                  leading: Icon(Icons.bar_chart, color: iconColor),
                   title: const Text("My Coffee Stats"),
                   onTap: () {
                     Navigator.pop(context);
                     widget.onShowStats();
                   },
                 ),
+
                 const Divider(),
-                _buildSectionHeader(theme, "APP INFO"),
+                _buildSectionHeader("APP INFO"),
                 SwitchListTile(
                   title: const Text("Dark Mode"),
                   value: !widget.isLightMode,
                   activeColor: const Color(0xFF8D6E63),
-                  secondary: const Icon(Icons.nightlight_round),
+                  secondary: Icon(Icons.nightlight_round, color: iconColor),
                   onChanged: (val) => widget.onToggleTheme(),
                 ),
               ],
@@ -167,7 +183,7 @@ class _SideMenuState extends State<SideMenu> {
           // --- BOTTOM ACTIONS ---
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.person_outline),
+            leading: Icon(Icons.person_outline, color: iconColor),
             title: const Text("Edit Profile"),
             onTap: () {
               Navigator.pop(context);
@@ -190,13 +206,13 @@ class _SideMenuState extends State<SideMenu> {
     );
   }
 
-  Widget _buildSectionHeader(ThemeData theme, String title) {
+  Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Text(
         title,
-        style: TextStyle(
-          color: theme.primaryColor,
+        style: const TextStyle(
+          color: Color(0xFF3E2723), // Fixed Brown Color (No Purple!)
           fontWeight: FontWeight.bold,
           fontSize: 12,
           letterSpacing: 1.5,

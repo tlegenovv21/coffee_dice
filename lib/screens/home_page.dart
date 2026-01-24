@@ -5,12 +5,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
 
-// --- IMPORTS FOR OUR NEW WIDGETS ---
+// --- WIDGET IMPORTS ---
 import '../models/recipe.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/dice_roller.dart';
 import '../widgets/recipe_details.dart';
 import '../widgets/add_recipe_sheet.dart';
+import '../widgets/stats_dialog.dart';
+import '../widgets/profile_edit_dialog.dart';
+import '../widgets/recipe_card.dart';
 import 'grinder_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -28,20 +31,21 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // --- USER DATA ---
+  // --- STATE VARIABLES ---
   final user = FirebaseAuth.instance.currentUser;
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+      GlobalKey<ScaffoldState>(); // Needed for Swipe-to-Open
+
   String nickname = "Coffee Lover";
   String age = "";
   String pronouns = "";
   String bio = "";
   String avatarUrl = "";
   bool useCelsius = true;
-  String activeGrinderName = "Generic"; // <--- Holds the name for Side Menu
-
-  // --- RECIPE DATA ---
+  String activeGrinderName = "Generic";
   List<Recipe> myRecipes = [];
 
-  // --- DICE LOGIC ---
+  // --- UPDATED DICE LOGIC (More Options) ---
   final List<String> brewingMethods = [
     "V60 Pour Over",
     "French Press",
@@ -50,18 +54,26 @@ class _HomePageState extends State<HomePage> {
     "Moka Pot",
     "Espresso",
     "Cold Brew",
+    "Origami Dripper",
   ];
-  final List<String> coffeeRatios = ["1:15", "1:16", "1:17", "1:12", "1:10"];
+  final List<String> coffeeRatios = [
+    "1:15 (Balanced)",
+    "1:16 (Tea-like)",
+    "1:17 (Light)",
+    "1:12 (Strong)",
+    "1:10 (Concentrate)",
+  ];
   final List<String> wildcards = [
-    "Use cooler water",
-    "Stir twice",
-    "Grind finer",
-    "Pour slowly",
+    "Use cooler water (88°C)",
+    "Stir bloom vigorously",
+    "Grind one step finer",
+    "Pour really slowly",
     "Trust your instincts",
+    "Use boiling water",
   ];
 
   String currentMethod = "V60 Pour Over";
-  String currentRatio = "1:15";
+  String currentRatio = "1:15 (Balanced)";
   String currentWildcard = "Trust your instincts";
 
   @override
@@ -71,7 +83,7 @@ class _HomePageState extends State<HomePage> {
     _loadRecipes();
   }
 
-  // --- 1. LOADING DATA (Includes Grinder Name Logic) ---
+  // --- DATA LOADING ---
   Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -83,26 +95,22 @@ class _HomePageState extends State<HomePage> {
       useCelsius = prefs.getBool('pref_celsius') ?? true;
     });
 
-    // --- LOAD ACTIVE GRINDER NAME ---
     String? selectedId = prefs.getString('selected_grinder_id');
     List<String>? jsonList = prefs.getStringList('saved_grinders');
-
     if (selectedId != null && jsonList != null) {
       try {
-        // Find the grinder that matches the saved ID
         final grinderJson = jsonList.firstWhere(
           (str) => jsonDecode(str)['id'] == selectedId,
           orElse: () => "",
         );
-
         if (grinderJson.isNotEmpty) {
           final Map<String, dynamic> data = jsonDecode(grinderJson);
-          setState(() {
-            activeGrinderName = "${data['brand']} ${data['model']}";
-          });
+          setState(
+            () => activeGrinderName = "${data['brand']} ${data['model']}",
+          );
         }
       } catch (e) {
-        print("Error loading grinder name: $e");
+        /* ignore */
       }
     }
   }
@@ -110,47 +118,25 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadRecipes() async {
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.containsKey('my_recipes')) return;
-
     final String? recipesJson = prefs.getString('my_recipes');
     if (recipesJson != null) {
       List<dynamic> decodedList = jsonDecode(recipesJson);
-      setState(() {
-        myRecipes = decodedList.map((item) => Recipe.fromJson(item)).toList();
-      });
+      setState(
+        () => myRecipes = decodedList
+            .map((item) => Recipe.fromJson(item))
+            .toList(),
+      );
     }
   }
 
-  // --- 2. SAVING DATA ---
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
     String encodedList = jsonEncode(myRecipes.map((e) => e.toJson()).toList());
     await prefs.setString('my_recipes', encodedList);
   }
 
-  Future<void> _saveProfile(
-    String name,
-    String userAge,
-    String userPronouns,
-    String userBio,
-    String url,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_nickname', name);
-    await prefs.setString('user_age', userAge);
-    await prefs.setString('user_pronouns', userPronouns);
-    await prefs.setString('user_bio', userBio);
-    await prefs.setString('user_avatar', url);
-    setState(() {
-      nickname = name;
-      age = userAge;
-      pronouns = userPronouns;
-      bio = userBio;
-      avatarUrl = url;
-    });
-  }
-
-  // --- 3. ACTIONS ---
-  void rollDice() {
+  // --- ACTIONS ---
+  void _rollDice() {
     setState(() {
       currentMethod = brewingMethods[Random().nextInt(brewingMethods.length)];
       currentRatio = coffeeRatios[Random().nextInt(coffeeRatios.length)];
@@ -159,35 +145,67 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _handleSaveRecipe(Recipe newRecipe) async {
-    setState(() {
-      myRecipes.add(newRecipe);
-    });
-    await _saveData(); // Save to phone
-
-    if (mounted) {
+    setState(() => myRecipes.add(newRecipe));
+    await _saveData();
+    if (mounted)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Recipe Saved! ☕'),
           backgroundColor: Color(0xFF3E2723),
         ),
       );
-    }
   }
 
   Future<void> _deleteRecipe(int index) async {
-    setState(() {
-      myRecipes.removeAt(index);
-    });
+    setState(() => myRecipes.removeAt(index));
     await _saveData();
     if (mounted) {
-      Navigator.pop(context); // Close details dialog
+      // Check if dialog is open (via Route) or just snackbar
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Entry Deleted')));
     }
   }
 
-  // --- 4. NAVIGATION & DIALOGS ---
+  void _editRecipeFromCard(int index) {
+    // For now, we will just open the details dialog which has delete.
+    // Implementing full edit requires a separate Edit Form.
+    // We will show a "Coming Soon" or open the Details Dialog.
+    showDialog(
+      context: context,
+      builder: (context) => RecipeDetailsDialog(
+        recipe: myRecipes[index],
+        index: index,
+        onDelete: _deleteRecipe,
+        useCelsius: useCelsius,
+      ),
+    );
+  }
+
+  Future<void> _saveProfile(
+    String n,
+    String a,
+    String p,
+    String b,
+    String u,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_nickname', n);
+    await prefs.setString('user_age', a);
+    await prefs.setString('user_pronouns', p);
+    await prefs.setString('user_bio', b);
+    await prefs.setString('user_avatar', u);
+    setState(() {
+      nickname = n;
+      age = a;
+      pronouns = p;
+      bio = b;
+      avatarUrl = u;
+    });
+    if (mounted) Navigator.pop(context);
+  }
+
+  // --- NAVIGATION HELPERS ---
   void _openAddSheet() {
     showModalBottomSheet(
       context: context,
@@ -199,302 +217,166 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _showStats() => showDialog(
+    context: context,
+    builder: (context) => StatsDialog(recipes: myRecipes),
+  );
+
+  void _showProfileSettings() {
+    showDialog(
+      context: context,
+      builder: (context) => ProfileEditDialog(
+        currentName: nickname,
+        currentAge: age,
+        currentPronouns: pronouns,
+        currentBio: bio,
+        currentAvatar: avatarUrl,
+        onSave: _saveProfile,
+      ),
+    );
+  }
+
   void _openGrinderSettings() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const GrinderPage()),
-    ).then((_) {
-      // Reload profile when returning to update the Side Menu name
-      _loadProfile();
-    });
+    ).then((_) => _loadProfile());
   }
 
-  void _showStats() {
-    // Basic stats logic
-    if (myRecipes.isEmpty) return;
-    var counts = <String, int>{};
-    for (var r in myRecipes) {
-      counts[r.method] = (counts[r.method] ?? 0) + 1;
-    }
-    var winner = counts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("My Coffee Stats"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text("Total Brews"),
-              trailing: Text("${myRecipes.length}"),
-            ),
-            ListTile(
-              title: const Text("Favorite Method"),
-              subtitle: Text(winner.first.key),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showProfileSettings() {
-    final nameController = TextEditingController(text: nickname);
-    final ageController = TextEditingController(text: age);
-    final pronounsController = TextEditingController(text: pronouns);
-    final bioController = TextEditingController(text: bio);
-    final urlController = TextEditingController(text: avatarUrl);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          scrollable: true,
-          title: const Text("Edit Profile"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: "Nickname"),
-              ),
-              TextField(
-                controller: ageController,
-                decoration: const InputDecoration(labelText: "Age"),
-              ),
-              TextField(
-                controller: pronounsController,
-                decoration: const InputDecoration(labelText: "Pronouns"),
-              ),
-              TextField(
-                controller: bioController,
-                maxLength: 30,
-                decoration: const InputDecoration(labelText: "Bio"),
-              ),
-              TextField(
-                controller: urlController,
-                decoration: const InputDecoration(labelText: "Avatar URL"),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _saveProfile(
-                  nameController.text,
-                  ageController.text,
-                  pronounsController.text,
-                  bioController.text,
-                  urlController.text,
-                );
-                Navigator.pop(context);
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // --- 5. MAIN BUILD ---
+  // --- MAIN BUILD ---
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      // SIDE MENU
-      drawer: SideMenu(
-        nickname: nickname,
-        email: user?.email ?? "Guest",
-        avatarUrl: avatarUrl,
-        bio: bio,
-        pronouns: pronouns,
-        isLightMode: widget.isLightMode,
-        currentGrinderName: activeGrinderName, // <--- PASSING THE NAME!
-        onToggleTheme: widget.onToggle,
-        onEditProfile: _showProfileSettings,
-        onShowStats: _showStats,
-        onShowGrinder: _openGrinderSettings,
-      ),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          "COFFEE DICE",
-          style: TextStyle(
-            color: theme.textTheme.titleLarge?.color,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2.0,
-          ),
+    // SWIPE DETECTOR: Wraps the whole page
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        // If Swipe Velocity is positive (Left -> Right)
+        if (details.primaryVelocity! > 0) {
+          _scaffoldKey.currentState?.openDrawer();
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey, // ASSIGN KEY HERE
+        backgroundColor: theme.scaffoldBackgroundColor,
+
+        drawer: SideMenu(
+          nickname: nickname,
+          email: user?.email ?? "Guest",
+          avatarUrl: avatarUrl,
+          bio: bio,
+          pronouns: pronouns,
+          isLightMode: widget.isLightMode,
+          currentGrinderName: activeGrinderName,
+          onToggleTheme: widget.onToggle,
+          onEditProfile: _showProfileSettings,
+          onShowStats: _showStats,
+          onShowGrinder: _openGrinderSettings,
         ),
-        leading: Builder(
-          builder: (context) => IconButton(
+
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            "COFFEE DICE",
+            style: TextStyle(
+              color: theme.textTheme.titleLarge?.color,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2.0,
+            ),
+          ),
+          leading: IconButton(
             icon: Icon(Icons.menu, color: theme.iconTheme.color),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // TOP: Dice Roller
-            DiceRoller(
-              method: currentMethod,
-              ratio: currentRatio,
-              wildcard: currentWildcard,
-              onRoll: rollDice,
-            ),
 
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Divider(),
-            ),
-
-            // HEADER: My Journal
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "MY JOURNAL",
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  Text(
-                    "${myRecipes.length} Entries",
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              DiceRoller(
+                method: currentMethod,
+                ratio: currentRatio,
+                wildcard: currentWildcard,
+                onRoll: _rollDice,
               ),
-            ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Divider(),
+              ),
 
-            // LIST: Recipes
-            Expanded(
-              child: myRecipes.isEmpty
-                  ? Center(
-                      child: Text(
-                        "Roll the dice & log your first brew!",
-                        style: TextStyle(color: Colors.grey[400]),
+              // Journal Header
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 5,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "MY JOURNAL",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: myRecipes.length,
-                      itemBuilder: (context, index) {
-                        final reversedIndex = myRecipes.length - 1 - index;
-                        final recipe = myRecipes[reversedIndex];
+                    ),
+                    Text(
+                      "${myRecipes.length} Entries",
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: InkWell(
+              // Recipe List
+              Expanded(
+                child: myRecipes.isEmpty
+                    ? Center(
+                        child: Text(
+                          "Roll the dice & log your first brew!",
+                          style: TextStyle(color: Colors.grey[400]),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: myRecipes.length,
+                        itemBuilder: (context, index) {
+                          final reversedIndex = myRecipes.length - 1 - index;
+                          return RecipeCard(
+                            recipe: myRecipes[reversedIndex],
                             onTap: () {
                               showDialog(
                                 context: context,
                                 builder: (context) => RecipeDetailsDialog(
-                                  recipe: recipe,
+                                  recipe: myRecipes[reversedIndex],
                                   index: reversedIndex,
                                   onDelete: _deleteRecipe,
                                   useCelsius: useCelsius,
                                 ),
                               );
                             },
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: theme.cardColor,
-                                borderRadius: BorderRadius.circular(15),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF3E2723,
-                                      ).withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.coffee,
-                                      color: Color(0xFF3E2723),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 15),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          recipe.method,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: theme
-                                                .textTheme
-                                                .bodyMedium
-                                                ?.color,
-                                          ),
-                                        ),
-                                        Text(
-                                          // Display Origin + Dose if available, otherwise Grind
-                                          "${recipe.beanOrigin.isNotEmpty ? recipe.beanOrigin : 'Unknown Bean'} • ${recipe.doseWeight > 0 ? '${recipe.doseWeight}g' : recipe.grindSetting}",
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.chevron_right,
-                                    color: Colors.grey[400],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+                            // Swipe Right Action (Edit)
+                            onEdit: () => _editRecipeFromCard(reversedIndex),
+                            // Swipe Left Action (Delete)
+                            onDelete: () => _deleteRecipe(reversedIndex),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddSheet, // Opens our new form
-        backgroundColor: const Color(0xFF3E2723),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          "Log Brew",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openAddSheet,
+          backgroundColor: const Color(0xFF3E2723),
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text(
+            "Log Brew",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
         ),
       ),
     );
