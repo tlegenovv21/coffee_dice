@@ -2,7 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/grinder.dart'; // Ensure this matches your folder structure
+import '../models/grinder.dart';
 
 class GrinderPage extends StatefulWidget {
   const GrinderPage({super.key});
@@ -15,7 +15,7 @@ class _GrinderPageState extends State<GrinderPage> {
   List<Grinder> myGrinders = [];
   String? selectedGrinderId;
 
-  // Controllers for the "Add Grinder" form
+  // Controllers
   final _brandController = TextEditingController();
   final _modelController = TextEditingController();
   final _minController = TextEditingController(text: "0");
@@ -29,11 +29,8 @@ class _GrinderPageState extends State<GrinderPage> {
     _loadData();
   }
 
-  // --- 1. SAVING & LOADING LOGIC (The Missing Link) ---
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Convert list of objects to list of JSON strings
     List<String> jsonList = myGrinders
         .map((g) => jsonEncode(g.toJson()))
         .toList();
@@ -41,16 +38,17 @@ class _GrinderPageState extends State<GrinderPage> {
 
     if (selectedGrinderId != null) {
       await prefs.setString('selected_grinder_id', selectedGrinderId!);
+    } else {
+      await prefs.remove('selected_grinder_id'); // Allow saving "No Selection"
     }
   }
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-
     List<String>? jsonList = prefs.getStringList('saved_grinders');
 
     if (jsonList == null || jsonList.isEmpty) {
-      // --- ADD DEFAULTS IF LIST IS EMPTY ---
+      // Defaults
       List<Grinder> defaults = [
         Grinder(
           id: "def1",
@@ -89,9 +87,8 @@ class _GrinderPageState extends State<GrinderPage> {
           maxRange: 11,
         ),
       ];
-
       myGrinders = defaults;
-      _saveData(); // Save them immediately
+      _saveData();
     } else {
       setState(() {
         myGrinders = jsonList
@@ -105,107 +102,57 @@ class _GrinderPageState extends State<GrinderPage> {
     });
   }
 
-  // --- 2. ADD NEW GRINDER FORM ---
+  // --- ADD DIALOG ---
   void _showAddGrinderDialog() {
-    // Reset form
     _brandController.clear();
     _modelController.clear();
-    _minController.text = "0";
-    _maxController.text = "40";
-    _selectedType = GrinderType.conicalBurr;
-    _selectedAdj = AdjustmentType.stepped;
 
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          // Needed to update dropdowns inside dialog
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: const Text("Add New Grinder"),
-              scrollable: true,
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _brandController,
-                    decoration: const InputDecoration(
-                      labelText: "Brand (e.g. Baratza)",
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _brandController,
+                      decoration: const InputDecoration(labelText: "Brand"),
                     ),
-                  ),
-                  TextField(
-                    controller: _modelController,
-                    decoration: const InputDecoration(
-                      labelText: "Model (e.g. Encore)",
+                    TextField(
+                      controller: _modelController,
+                      decoration: const InputDecoration(labelText: "Model"),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButton<GrinderType>(
-                          value: _selectedType,
-                          isExpanded: true,
-                          items: GrinderType.values
-                              .map(
-                                (t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text(t.name.toUpperCase()),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) =>
-                              setStateDialog(() => _selectedType = val!),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButton<AdjustmentType>(
-                          value: _selectedAdj,
-                          isExpanded: true,
-                          items: AdjustmentType.values
-                              .map(
-                                (t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text(t.name.toUpperCase()),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) =>
-                              setStateDialog(() => _selectedAdj = val!),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _minController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: "Min Setting",
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _maxController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: "Max Setting",
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    DropdownButton<GrinderType>(
+                      value: _selectedType,
+                      isExpanded: true,
+                      items: GrinderType.values
+                          .map(
+                            (t) =>
+                                DropdownMenuItem(value: t, child: Text(t.name)),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setStateDialog(() => _selectedType = val!),
+                    ),
+                    DropdownButton<AdjustmentType>(
+                      value: _selectedAdj,
+                      isExpanded: true,
+                      items: AdjustmentType.values
+                          .map(
+                            (t) =>
+                                DropdownMenuItem(value: t, child: Text(t.name)),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setStateDialog(() => _selectedAdj = val!),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -214,31 +161,30 @@ class _GrinderPageState extends State<GrinderPage> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    if (_brandController.text.isEmpty ||
-                        _modelController.text.isEmpty)
-                      return;
-
+                    if (_brandController.text.isEmpty) return;
                     final newGrinder = Grinder(
-                      id: DateTime.now().millisecondsSinceEpoch
-                          .toString(), // Unique ID
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
                       brand: _brandController.text,
                       model: _modelController.text,
                       type: _selectedType,
                       adjustmentType: _selectedAdj,
-                      minRange: double.tryParse(_minController.text) ?? 0,
-                      maxRange: double.tryParse(_maxController.text) ?? 40,
+                      minRange: 0,
+                      maxRange: 40,
                     );
-
                     setState(() {
                       myGrinders.add(newGrinder);
-                      selectedGrinderId ??=
-                          newGrinder.id; // Auto-select if first one
+                      selectedGrinderId = newGrinder.id;
                     });
-
-                    _saveData(); // <--- CRITICAL SAVE CALL
+                    _saveData();
                     Navigator.pop(context);
                   },
-                  child: const Text("Save Grinder"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3E2723),
+                  ),
+                  child: const Text(
+                    "Save",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -256,52 +202,47 @@ class _GrinderPageState extends State<GrinderPage> {
     _saveData();
   }
 
+  // --- MAIN BUILD ---
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context); // Get current theme (Dark/Light)
+
     return Scaffold(
       appBar: AppBar(title: const Text("My Grinder Inventory")),
       body: myGrinders.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.coffee_maker, size: 60, color: Colors.grey),
-                  const SizedBox(height: 10),
-                  const Text("No grinders added yet."),
-                  TextButton(
-                    onPressed: _showAddGrinderDialog,
-                    child: const Text("Add Your First Grinder"),
-                  ),
-                ],
-              ),
-            )
+          ? const Center(child: Text("No grinders added yet."))
           : ListView.builder(
+              padding: const EdgeInsets.all(16),
               itemCount: myGrinders.length,
               itemBuilder: (context, index) {
                 final grinder = myGrinders[index];
                 final isSelected = grinder.id == selectedGrinderId;
 
                 return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  color: isSelected
-                      ? const Color(0xFFEFEBE9)
-                      : null, // Highlight selected
+                  margin: const EdgeInsets.only(bottom: 10),
+                  // Use theme card color to fix Dark Mode readability
+                  color: theme.cardColor,
+                  elevation: 2,
                   child: ListTile(
                     leading: Icon(
-                      grinder.type == GrinderType.blade
-                          ? Icons.api
-                          : Icons.settings, // Simple icon logic
+                      Icons.settings,
                       color: isSelected ? const Color(0xFF3E2723) : Colors.grey,
                     ),
                     title: Text(
                       "${grinder.brand} ${grinder.model}",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        // Ensure text is visible in both modes
+                        color: theme.textTheme.bodyLarge?.color,
+                      ),
                     ),
                     subtitle: Text(
                       "${grinder.type.name} • ${grinder.adjustmentType.name}",
+                      style: TextStyle(
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                          0.7,
+                        ),
+                      ),
                     ),
                     trailing: isSelected
                         ? const Icon(
@@ -309,11 +250,21 @@ class _GrinderPageState extends State<GrinderPage> {
                             color: Color(0xFF3E2723),
                           )
                         : IconButton(
-                            icon: const Icon(Icons.delete_outline),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.grey,
+                            ),
                             onPressed: () => _deleteGrinder(grinder.id),
                           ),
                     onTap: () {
-                      setState(() => selectedGrinderId = grinder.id);
+                      setState(() {
+                        // TOGGLE LOGIC: If already selected, deselect it.
+                        if (selectedGrinderId == grinder.id) {
+                          selectedGrinderId = null;
+                        } else {
+                          selectedGrinderId = grinder.id;
+                        }
+                      });
                       _saveData();
                     },
                   ),
@@ -322,8 +273,11 @@ class _GrinderPageState extends State<GrinderPage> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddGrinderDialog,
-        icon: const Icon(Icons.add),
-        label: const Text("Add Grinder"),
+        icon: const Icon(Icons.add, color: Colors.white), // FIXED ICON COLOR
+        label: const Text(
+          "Add Grinder",
+          style: TextStyle(color: Colors.white),
+        ), // FIXED TEXT COLOR
         backgroundColor: const Color(0xFF3E2723),
       ),
     );

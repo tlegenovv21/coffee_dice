@@ -129,7 +129,7 @@ class _SideMenuState extends State<SideMenu> {
               children: [
                 _buildSectionHeader("BREWING"),
                 SwitchListTile(
-                  title: const Text("Units: °C / °F"),
+                  title: const Text("Units: °F / °C"),
                   subtitle: Text(
                     useCelsius ? "Using Celsius" : "Using Fahrenheit",
                   ),

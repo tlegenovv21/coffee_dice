@@ -40,48 +40,70 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
     _urlController = TextEditingController(text: widget.currentAvatar);
   }
 
-  // Helper to style text fields cleanly
-  InputDecoration _inputStyle(String label) {
+  // FIXED STYLE HELPER
+  InputDecoration _inputStyle(String label, BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Color(0xFF3E2723)), // Coffee Color
-      focusedBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: Color(0xFF3E2723), width: 2),
+      labelStyle: TextStyle(
+        color: isDark ? Colors.grey[400] : const Color(0xFF3E2723),
+      ),
+
+      // Add a background fill so text is readable in Dark Mode
+      filled: true,
+      fillColor: isDark ? Colors.grey[800] : Colors.grey[200],
+
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFF3E2723), width: 2),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Determine title color based on theme
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF3E2723);
+
     return AlertDialog(
       scrollable: true,
-      title: const Text(
+      backgroundColor: Theme.of(context).cardColor, // Adapts to theme
+      title: Text(
         "Edit Profile",
-        style: TextStyle(color: Color(0xFF3E2723)),
+        style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _nameController,
-            decoration: _inputStyle("Nickname"),
+            decoration: _inputStyle("Nickname", context),
           ),
           const SizedBox(height: 10),
-          TextField(controller: _ageController, decoration: _inputStyle("Age")),
+          TextField(
+            controller: _ageController,
+            decoration: _inputStyle("Age", context),
+          ),
           const SizedBox(height: 10),
           TextField(
             controller: _pronounsController,
-            decoration: _inputStyle("Pronouns (he/him)"),
+            decoration: _inputStyle("Pronouns (he/him)", context),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: _bioController,
             maxLength: 30,
-            decoration: _inputStyle("Bio"),
+            decoration: _inputStyle("Bio", context),
           ),
           TextField(
             controller: _urlController,
-            decoration: _inputStyle("Avatar URL (Image Link)"),
+            decoration: _inputStyle("Avatar URL (Image Link)", context),
           ),
         ],
       ),

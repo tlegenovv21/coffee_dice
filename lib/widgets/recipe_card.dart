@@ -20,14 +20,24 @@ class RecipeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // DISMISSIBLE: Allows swiping left or right
     return Dismissible(
-      key: UniqueKey(), // Unique ID for animation
+      key: UniqueKey(),
+
+      // --- MAKE IT SOFT ---
+      movementDuration: const Duration(
+        milliseconds: 600,
+      ), // Slower slide (was default ~200ms)
+      resizeDuration: const Duration(milliseconds: 500), // Slower collapse
       // --- SWIPE RIGHT (EDIT) ---
       background: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 20),
-        color: Colors.green[700],
+        decoration: BoxDecoration(
+          color: Colors.green[700],
+          borderRadius: BorderRadius.circular(
+            15,
+          ), // Rounds corners during swipe
+        ),
         child: const Icon(Icons.edit, color: Colors.white, size: 30),
       ),
 
@@ -35,20 +45,20 @@ class RecipeCard extends StatelessWidget {
       secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: Colors.red[900],
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(15),
+        ),
         child: const Icon(Icons.delete, color: Colors.white, size: 30),
       ),
 
-      // Logic: Check which way user swiped
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
-          // Swipe Right -> Edit
           onEdit();
-          return false; // Don't remove the card from view
+          return false;
         } else {
-          // Swipe Left -> Delete
           onDelete();
-          return true; // Remove the card
+          return true;
         }
       },
 
@@ -93,7 +103,6 @@ class RecipeCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        // Shows "Ethiopia • 18g" or just Grind setting
                         "${recipe.beanOrigin.isNotEmpty ? recipe.beanOrigin : 'Unknown Bean'} • ${recipe.doseWeight > 0 ? '${recipe.doseWeight}g' : recipe.grindSetting}",
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),

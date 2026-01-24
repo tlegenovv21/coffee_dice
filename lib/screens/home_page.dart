@@ -137,11 +137,33 @@ class _HomePageState extends State<HomePage> {
 
   // --- ACTIONS ---
   void _rollDice() {
-    setState(() {
-      currentMethod = brewingMethods[Random().nextInt(brewingMethods.length)];
-      currentRatio = coffeeRatios[Random().nextInt(coffeeRatios.length)];
-      currentWildcard = wildcards[Random().nextInt(wildcards.length)];
-    });
+    // 1. Check if we have saved recipes
+    // 2. 20% Chance (Random().nextInt(5) == 0) to show a "Memory"
+    if (myRecipes.isNotEmpty && Random().nextInt(5) == 0) {
+      // Pick a random receipt from YOUR list
+      final randomRecipe = myRecipes[Random().nextInt(myRecipes.length)];
+
+      setState(() {
+        // Use the EXACT data from your receipt
+        currentMethod = randomRecipe.method;
+        currentRatio = randomRecipe.ratio.isNotEmpty
+            ? randomRecipe.ratio
+            : "1:15"; // Fallback if empty
+
+        // Special "Wildcard" that tells you this is your recipe
+        String origin = randomRecipe.beanOrigin.isNotEmpty
+            ? randomRecipe.beanOrigin
+            : "Saved Brew";
+        currentWildcard = "Try your '$origin' recipe!";
+      });
+    } else {
+      // --- STANDARD RANDOM ROLL (Existing Logic) ---
+      setState(() {
+        currentMethod = brewingMethods[Random().nextInt(brewingMethods.length)];
+        currentRatio = coffeeRatios[Random().nextInt(coffeeRatios.length)];
+        currentWildcard = wildcards[Random().nextInt(wildcards.length)];
+      });
+    }
   }
 
   Future<void> _handleSaveRecipe(Recipe newRecipe) async {
