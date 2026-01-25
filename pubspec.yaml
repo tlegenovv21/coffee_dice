@@ -1,7 +1,7 @@
 name: coffee_dice
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.1+3  # Was 1.2.0+2
 
 environment:
   sdk: ^3.10.7
@@ -17,6 +17,7 @@ dependencies:
   firebase_core: ^2.24.2
   firebase_auth: ^4.16.0
   cloud_firestore: ^4.14.0
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +36,5 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/audio/

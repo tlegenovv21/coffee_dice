@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/sound_manager.dart';
 
 class SideMenu extends StatefulWidget {
   final String nickname;
@@ -37,6 +38,7 @@ class SideMenu extends StatefulWidget {
 
 class _SideMenuState extends State<SideMenu> {
   bool useCelsius = true;
+  bool useSound = true;
 
   @override
   void initState() {
@@ -48,6 +50,7 @@ class _SideMenuState extends State<SideMenu> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       useCelsius = prefs.getBool('pref_celsius') ?? true;
+      useSound = SoundManager().isSoundOn;
     });
   }
 
@@ -140,6 +143,23 @@ class _SideMenuState extends State<SideMenu> {
                     setState(() => useCelsius = val);
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.setBool('pref_celsius', val);
+                  },
+                ),
+                // --- NEW SOUND SWITCH ---
+                SwitchListTile(
+                  title: const Text("Sound Effects"),
+                  subtitle: Text(useSound ? "On" : "Off"),
+                  value: useSound,
+                  activeColor: const Color(0xFF8D6E63),
+                  secondary: Icon(
+                    useSound ? Icons.volume_up : Icons.volume_off,
+                    color: Colors.grey[600],
+                  ),
+                  onChanged: (val) async {
+                    setState(() => useSound = val);
+                    await SoundManager().toggleSound(val);
+                    // Play a test click so user knows it works
+                    if (val) SoundManager().play('click.mp3');
                   },
                 ),
                 ListTile(

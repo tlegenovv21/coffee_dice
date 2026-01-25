@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/grinder.dart';
+import '../services/sound_manager.dart';
 
 class GrinderPage extends StatefulWidget {
   const GrinderPage({super.key});
@@ -39,7 +40,7 @@ class _GrinderPageState extends State<GrinderPage> {
     if (selectedGrinderId != null) {
       await prefs.setString('selected_grinder_id', selectedGrinderId!);
     } else {
-      await prefs.remove('selected_grinder_id'); // Allow saving "No Selection"
+      await prefs.remove('selected_grinder_id');
     }
   }
 
@@ -48,7 +49,6 @@ class _GrinderPageState extends State<GrinderPage> {
     List<String>? jsonList = prefs.getStringList('saved_grinders');
 
     if (jsonList == null || jsonList.isEmpty) {
-      // Defaults
       List<Grinder> defaults = [
         Grinder(
           id: "def1",
@@ -104,6 +104,8 @@ class _GrinderPageState extends State<GrinderPage> {
 
   // --- ADD DIALOG ---
   void _showAddGrinderDialog() {
+    SoundManager().play('click.ogg'); // Still OGG
+
     _brandController.clear();
     _modelController.clear();
 
@@ -162,6 +164,10 @@ class _GrinderPageState extends State<GrinderPage> {
                 ElevatedButton(
                   onPressed: () {
                     if (_brandController.text.isEmpty) return;
+
+                    // 🔊 SOUND: Success (Now MP3)
+                    SoundManager().play('success.mp3');
+
                     final newGrinder = Grinder(
                       id: DateTime.now().millisecondsSinceEpoch.toString(),
                       brand: _brandController.text,
@@ -195,6 +201,7 @@ class _GrinderPageState extends State<GrinderPage> {
   }
 
   void _deleteGrinder(String id) {
+    SoundManager().play('click.ogg');
     setState(() {
       myGrinders.removeWhere((g) => g.id == id);
       if (selectedGrinderId == id) selectedGrinderId = null;
@@ -205,7 +212,7 @@ class _GrinderPageState extends State<GrinderPage> {
   // --- MAIN BUILD ---
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context); // Get current theme (Dark/Light)
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text("My Grinder Inventory")),
@@ -220,7 +227,6 @@ class _GrinderPageState extends State<GrinderPage> {
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 10),
-                  // Use theme card color to fix Dark Mode readability
                   color: theme.cardColor,
                   elevation: 2,
                   child: ListTile(
@@ -232,7 +238,6 @@ class _GrinderPageState extends State<GrinderPage> {
                       "${grinder.brand} ${grinder.model}",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        // Ensure text is visible in both modes
                         color: theme.textTheme.bodyLarge?.color,
                       ),
                     ),
@@ -257,8 +262,8 @@ class _GrinderPageState extends State<GrinderPage> {
                             onPressed: () => _deleteGrinder(grinder.id),
                           ),
                     onTap: () {
+                      SoundManager().play('click.ogg');
                       setState(() {
-                        // TOGGLE LOGIC: If already selected, deselect it.
                         if (selectedGrinderId == grinder.id) {
                           selectedGrinderId = null;
                         } else {
@@ -273,11 +278,8 @@ class _GrinderPageState extends State<GrinderPage> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddGrinderDialog,
-        icon: const Icon(Icons.add, color: Colors.white), // FIXED ICON COLOR
-        label: const Text(
-          "Add Grinder",
-          style: TextStyle(color: Colors.white),
-        ), // FIXED TEXT COLOR
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text("Add Grinder", style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF3E2723),
       ),
     );

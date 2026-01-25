@@ -15,6 +15,7 @@ import '../widgets/stats_dialog.dart';
 import '../widgets/profile_edit_dialog.dart';
 import '../widgets/recipe_card.dart';
 import 'grinder_page.dart';
+import '../services/sound_manager.dart';
 
 class HomePage extends StatefulWidget {
   final bool isLightMode;
@@ -33,8 +34,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // --- STATE VARIABLES ---
   final user = FirebaseAuth.instance.currentUser;
-  final GlobalKey<ScaffoldState> _scaffoldKey =
-      GlobalKey<ScaffoldState>(); // Needed for Swipe-to-Open
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   String nickname = "Coffee Lover";
   String age = "";
@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
   String activeGrinderName = "Generic";
   List<Recipe> myRecipes = [];
 
-  // --- UPDATED DICE LOGIC (More Options) ---
+  // --- DICE LOGIC ---
   final List<String> brewingMethods = [
     "V60 Pour Over",
     "French Press",
@@ -137,27 +137,23 @@ class _HomePageState extends State<HomePage> {
 
   // --- ACTIONS ---
   void _rollDice() {
-    // 1. Check if we have saved recipes
-    // 2. 20% Chance (Random().nextInt(5) == 0) to show a "Memory"
-    if (myRecipes.isNotEmpty && Random().nextInt(5) == 0) {
-      // Pick a random receipt from YOUR list
-      final randomRecipe = myRecipes[Random().nextInt(myRecipes.length)];
+    // 🔇 Sound Removed here per request
 
+    if (myRecipes.isNotEmpty && Random().nextInt(5) == 0) {
+      // Memory Roll Logic
+      final randomRecipe = myRecipes[Random().nextInt(myRecipes.length)];
       setState(() {
-        // Use the EXACT data from your receipt
         currentMethod = randomRecipe.method;
         currentRatio = randomRecipe.ratio.isNotEmpty
             ? randomRecipe.ratio
-            : "1:15"; // Fallback if empty
-
-        // Special "Wildcard" that tells you this is your recipe
+            : "1:15";
         String origin = randomRecipe.beanOrigin.isNotEmpty
             ? randomRecipe.beanOrigin
             : "Saved Brew";
         currentWildcard = "Try your '$origin' recipe!";
       });
     } else {
-      // --- STANDARD RANDOM ROLL (Existing Logic) ---
+      // Standard Roll
       setState(() {
         currentMethod = brewingMethods[Random().nextInt(brewingMethods.length)];
         currentRatio = coffeeRatios[Random().nextInt(coffeeRatios.length)];
@@ -167,6 +163,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _handleSaveRecipe(Recipe newRecipe) async {
+    // 🔊 SOUND: Success (MP3)
+    SoundManager().play('success.mp3');
+
     setState(() => myRecipes.add(newRecipe));
     await _saveData();
     if (mounted)
@@ -179,10 +178,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _deleteRecipe(int index) async {
+    // 🔊 SOUND: Click (OGG)
+    SoundManager().play('click.ogg');
+
     setState(() => myRecipes.removeAt(index));
     await _saveData();
     if (mounted) {
-      // Check if dialog is open (via Route) or just snackbar
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Entry Deleted')));
@@ -190,9 +191,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _editRecipeFromCard(int index) {
-    // For now, we will just open the details dialog which has delete.
-    // Implementing full edit requires a separate Edit Form.
-    // We will show a "Coming Soon" or open the Details Dialog.
+    SoundManager().play('click.ogg');
     showDialog(
       context: context,
       builder: (context) => RecipeDetailsDialog(
@@ -229,6 +228,7 @@ class _HomePageState extends State<HomePage> {
 
   // --- NAVIGATION HELPERS ---
   void _openAddSheet() {
+    SoundManager().play('click.ogg');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -239,12 +239,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showStats() => showDialog(
-    context: context,
-    builder: (context) => StatsDialog(recipes: myRecipes),
-  );
+  void _showStats() {
+    SoundManager().play('click.ogg');
+    showDialog(
+      context: context,
+      builder: (context) => StatsDialog(recipes: myRecipes),
+    );
+  }
 
   void _showProfileSettings() {
+    SoundManager().play('click.ogg');
     showDialog(
       context: context,
       builder: (context) => ProfileEditDialog(
@@ -259,6 +263,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openGrinderSettings() {
+    SoundManager().play('click.ogg');
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const GrinderPage()),
@@ -270,16 +275,14 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // SWIPE DETECTOR: Wraps the whole page
     return GestureDetector(
       onHorizontalDragEnd: (details) {
-        // If Swipe Velocity is positive (Left -> Right)
         if (details.primaryVelocity! > 0) {
           _scaffoldKey.currentState?.openDrawer();
         }
       },
       child: Scaffold(
-        key: _scaffoldKey, // ASSIGN KEY HERE
+        key: _scaffoldKey,
         backgroundColor: theme.scaffoldBackgroundColor,
 
         drawer: SideMenu(
@@ -310,7 +313,10 @@ class _HomePageState extends State<HomePage> {
           ),
           leading: IconButton(
             icon: Icon(Icons.menu, color: theme.iconTheme.color),
-            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            onPressed: () {
+              SoundManager().play('click.ogg');
+              _scaffoldKey.currentState?.openDrawer();
+            },
           ),
         ),
 
@@ -328,7 +334,6 @@ class _HomePageState extends State<HomePage> {
                 child: Divider(),
               ),
 
-              // Journal Header
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -353,7 +358,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              // Recipe List
               Expanded(
                 child: myRecipes.isEmpty
                     ? Center(
@@ -370,6 +374,7 @@ class _HomePageState extends State<HomePage> {
                           return RecipeCard(
                             recipe: myRecipes[reversedIndex],
                             onTap: () {
+                              SoundManager().play('click.ogg');
                               showDialog(
                                 context: context,
                                 builder: (context) => RecipeDetailsDialog(
@@ -380,9 +385,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               );
                             },
-                            // Swipe Right Action (Edit)
                             onEdit: () => _editRecipeFromCard(reversedIndex),
-                            // Swipe Left Action (Delete)
                             onDelete: () => _deleteRecipe(reversedIndex),
                           );
                         },
