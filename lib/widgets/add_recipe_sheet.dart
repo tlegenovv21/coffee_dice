@@ -1,4 +1,7 @@
+// lib/widgets/add_recipe_sheet.dart
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/recipe.dart';
 
 class AddRecipeSheet extends StatefulWidget {
@@ -11,43 +14,119 @@ class AddRecipeSheet extends StatefulWidget {
 }
 
 class _AddRecipeSheetState extends State<AddRecipeSheet> {
-  // Controllers moved HERE (so they don't clutter HomePage)
+  // Controllers
   final _methodController = TextEditingController();
-  final _ratioController = TextEditingController();
-  final _tempController = TextEditingController();
-  final _timeController = TextEditingController();
-  final _bloomController = TextEditingController();
-  final _grindController = TextEditingController();
   final _beanController = TextEditingController();
+  final _roastController = TextEditingController();
+  final _grindController = TextEditingController();
+  final _doseController = TextEditingController();
+  final _waterWeightController = TextEditingController();
+  final _waterTempController = TextEditingController();
+  final _timeController = TextEditingController();
   final _notesController = TextEditingController();
+
+  String? selectedGrinderId;
+  String activeGrinderLabel = "None";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveGrinder();
+  }
+
+  Future<void> _loadActiveGrinder() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? id = prefs.getString('selected_grinder_id');
+    List<String>? jsonList = prefs.getStringList('saved_grinders');
+
+    if (id != null && jsonList != null) {
+      try {
+        final grinderJson = jsonList.firstWhere(
+          (str) => jsonDecode(str)['id'] == id,
+          orElse: () => "",
+        );
+        if (grinderJson.isNotEmpty) {
+          final Map<String, dynamic> data = jsonDecode(grinderJson);
+          setState(() {
+            selectedGrinderId = id;
+            activeGrinderLabel = "${data['brand']} ${data['model']}";
+          });
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  }
 
   void _submit() {
     if (_methodController.text.isEmpty) return;
 
+    double parseDouble(String val) {
+      if (val.isEmpty) return 0.0;
+      return double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
+    }
+
+    double dose = parseDouble(_doseController.text);
+    double water = parseDouble(_waterWeightController.text);
+    String calcRatio = (dose > 0 && water > 0)
+        ? "1:${(water / dose).toStringAsFixed(1)}"
+        : "-";
+
     final newRecipe = Recipe(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       method: _methodController.text,
-      ratio: _ratioController.text,
-      waterTemp: _tempController.text,
-      brewTime: _timeController.text,
-      bloom: _bloomController.text,
       beanOrigin: _beanController.text,
-      rating: _notesController.text,
+      roastLevel: _roastController.text,
       grindSetting: _grindController.text,
-      doseWeight: 0.0,
+      doseWeight: dose,
+      waterWeight: water,
+      waterTemp: parseDouble(_waterTempController.text),
+      ratio: calcRatio,
+      brewTime: _timeController.text,
+      notes: _notesController.text,
+      date: DateTime.now(),
+      grinderId: selectedGrinderId ?? "",
     );
 
-    widget.onSave(newRecipe); // Send data back to Home
-    Navigator.pop(context); // Close the sheet
+    widget.onSave(newRecipe);
+    Navigator.pop(context);
+  }
+
+  // Helper for Clean, Old-School Inputs
+  Widget _buildInput(
+    TextEditingController controller,
+    String label, {
+    bool isNumber = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15), // Better spacing
+      child: TextField(
+        controller: controller,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        decoration: InputDecoration(
+          labelText: label,
+          // Removed OutlineInputBorder to restore the clean "Line" look
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 5,
+            horizontal: 0,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Detect Theme for Text Colors
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF3E2723);
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 20,
-        right: 20,
-        top: 25,
+        left: 24,
+        right: 24,
+        top: 24, // Increased padding
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -55,134 +134,106 @@ class _AddRecipeSheetState extends State<AddRecipeSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'New Journal Entry',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontSize: 24),
+              "Log Brew",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
             ),
             const SizedBox(height: 20),
-            TextField(
-              controller: _methodController,
-              decoration: const InputDecoration(
-                labelText: 'Method (Required)*',
-                hintText: "V60",
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _ratioController,
-              decoration: const InputDecoration(
-                labelText: 'Ratio',
-                hintText: "1:15",
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'DETAILS',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 10),
+
+            _buildInput(_methodController, "Method (V60, etc)"),
+            _buildInput(_beanController, "Bean Origin"),
+
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _tempController,
-                    decoration: const InputDecoration(
-                      labelText: 'Temp',
-                      hintText: "93°C",
-                    ),
+                  child: _buildInput(
+                    _doseController,
+                    "Dose (g)",
+                    isNumber: true,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 15),
                 Expanded(
-                  child: TextField(
-                    controller: _timeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Time',
-                      hintText: "3:00",
-                    ),
+                  child: _buildInput(
+                    _waterWeightController,
+                    "Water (g)",
+                    isNumber: true,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _bloomController,
-                    decoration: const InputDecoration(
-                      labelText: 'Bloom',
-                      hintText: "45g",
-                    ),
+                  child: _buildInput(
+                    _waterTempController,
+                    "Temp",
+                    isNumber: true,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _grindController,
-                    decoration: const InputDecoration(
-                      labelText: 'Grind Setting',
-                      hintText: "Medium / 14",
-                    ),
+                const SizedBox(width: 15),
+                Expanded(child: _buildInput(_timeController, "Time (min:sec)")),
+              ],
+            ),
+
+            Row(
+              children: [
+                Expanded(child: _buildInput(_grindController, "Grind Setting")),
+                const SizedBox(width: 15),
+                Expanded(child: _buildInput(_roastController, "Roast Level")),
+              ],
+            ),
+
+            _buildInput(_notesController, "Notes"),
+
+            const SizedBox(height: 5),
+            Row(
+              children: [
+                Icon(
+                  Icons.settings,
+                  size: 16,
+                  color: isDark ? Colors.white70 : Colors.grey,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  "Using Grinder: $activeGrinderLabel",
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.grey,
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              'THE BEANS',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _beanController,
-              decoration: const InputDecoration(
-                labelText: 'Origin / Name',
-                hintText: "e.g. Ethiopia",
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _notesController,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Tasting Notes',
-                hintText: "Fruity...",
-              ),
-            ),
-            const SizedBox(height: 30),
+
+            const SizedBox(height: 25),
             SizedBox(
               width: double.infinity,
-              height: 55,
               child: ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3E2723),
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDark
+                      ? Colors.white
+                      : const Color(0xFF3E2723), // Adaptive Button
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'SAVE ENTRY',
+                child: Text(
+                  "Save Entry",
                   style: TextStyle(
+                    color: isDark ? Colors.black : Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
           ],
         ),
       ),

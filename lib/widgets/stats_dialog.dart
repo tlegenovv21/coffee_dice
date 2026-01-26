@@ -4,62 +4,153 @@ import '../models/recipe.dart';
 
 class StatsDialog extends StatelessWidget {
   final List<Recipe> recipes;
+  final Function(String) onQuickAdd;
+  final Function(String) onQuickRemove;
 
-  const StatsDialog({super.key, required this.recipes});
+  const StatsDialog({
+    super.key,
+    required this.recipes,
+    required this.onQuickAdd,
+    required this.onQuickRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (recipes.isEmpty) {
-      return AlertDialog(
-        title: const Text("My Coffee Stats"),
-        content: const Text("Log your first brew to see stats!"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          ),
-        ],
-      );
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF3E2723);
+    final iconColor = isDark ? Colors.white70 : const Color(0xFF3E2723);
 
-    // Logic: Count methods
+    // 1. Calculate Stats
     var counts = <String, int>{};
     for (var r in recipes) {
       counts[r.method] = (counts[r.method] ?? 0) + 1;
     }
-    // Sort to find winner
-    var winner = counts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // Sort by count (Highest first)
+    var sortedKeys = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
 
     return AlertDialog(
-      title: const Text("My Coffee Stats"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+      backgroundColor: Theme.of(context).cardColor,
+      title: Row(
         children: [
-          ListTile(
-            leading: const Icon(Icons.analytics, color: Color(0xFF3E2723)),
-            title: const Text("Total Brews"),
-            trailing: Text(
-              "${recipes.length}",
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ),
-          const Divider(),
-          if (winner.isNotEmpty)
-            ListTile(
-              leading: const Icon(Icons.star, color: Colors.amber),
-              title: const Text("Favorite Method"),
-              subtitle: Text(winner.first.key),
-              trailing: Text("${winner.first.value}x"),
-            ),
+          Icon(Icons.analytics, color: iconColor),
+          const SizedBox(width: 10),
+          Text("Coffee Stats", style: TextStyle(color: textColor)),
         ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // --- RESTORED TOTAL BREWS ---
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                "Total Brews",
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              trailing: Text(
+                "${recipes.length}",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: textColor,
+                ),
+              ),
+            ),
+            const Divider(),
+
+            // ---------------------------
+            Expanded(
+              child: sortedKeys.isEmpty
+                  ? Center(
+                      child: Text(
+                        "Log a brew to see stats!",
+                        style: TextStyle(color: textColor),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: sortedKeys.length,
+                      itemBuilder: (context, index) {
+                        String method = sortedKeys[index];
+                        int count = counts[method]!;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Method Name
+                              Expanded(
+                                child: Text(
+                                  method,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ),
+
+                              // Minus Button
+                              IconButton(
+                                icon: Icon(
+                                  Icons.remove_circle_outline,
+                                  color: Colors.red[300],
+                                ),
+                                onPressed: () => onQuickRemove(method),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+
+                              // Count Text
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12.0,
+                                ),
+                                child: Text(
+                                  "$count",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ),
+
+                              // Plus Button
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.add_circle_outline,
+                                  color: Colors.green,
+                                ),
+                                onPressed: () => onQuickAdd(method),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(
+          child: Text(
             "Close",
-            style: TextStyle(color: Color(0xFF3E2723)),
+            style: TextStyle(
+              color: isDark ? Colors.white70 : const Color(0xFF3E2723),
+            ),
           ),
         ),
       ],

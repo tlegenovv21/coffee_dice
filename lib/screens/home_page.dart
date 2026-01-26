@@ -7,6 +7,7 @@ import 'dart:math';
 
 // --- WIDGET IMPORTS ---
 import '../models/recipe.dart';
+import '../data/pro_recipes.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/dice_roller.dart';
 import '../widgets/recipe_details.dart';
@@ -43,38 +44,15 @@ class _HomePageState extends State<HomePage> {
   String avatarUrl = "";
   bool useCelsius = true;
   String activeGrinderName = "Generic";
+  String activeGrinderId = "";
   List<Recipe> myRecipes = [];
 
-  // --- DICE LOGIC ---
-  final List<String> brewingMethods = [
-    "V60 Pour Over",
-    "French Press",
-    "Aeropress",
-    "Chemex",
-    "Moka Pot",
-    "Espresso",
-    "Cold Brew",
-    "Origami Dripper",
-  ];
-  final List<String> coffeeRatios = [
-    "1:15 (Balanced)",
-    "1:16 (Tea-like)",
-    "1:17 (Light)",
-    "1:12 (Strong)",
-    "1:10 (Concentrate)",
-  ];
-  final List<String> wildcards = [
-    "Use cooler water (88°C)",
-    "Stir bloom vigorously",
-    "Grind one step finer",
-    "Pour really slowly",
-    "Trust your instincts",
-    "Use boiling water",
-  ];
-
+  // --- DICE STATE ---
+  Recipe? currentRolledRecipe;
   String currentMethod = "V60 Pour Over";
   String currentRatio = "1:15 (Balanced)";
-  String currentWildcard = "Trust your instincts";
+  String currentWildcard = "Roll to find out!";
+  bool canSaveRoll = false;
 
   @override
   void initState() {
@@ -105,9 +83,10 @@ class _HomePageState extends State<HomePage> {
         );
         if (grinderJson.isNotEmpty) {
           final Map<String, dynamic> data = jsonDecode(grinderJson);
-          setState(
-            () => activeGrinderName = "${data['brand']} ${data['model']}",
-          );
+          setState(() {
+            activeGrinderName = "${data['brand']} ${data['model']}";
+            activeGrinderId = selectedId;
+          });
         }
       } catch (e) {
         /* ignore */
@@ -135,14 +114,17 @@ class _HomePageState extends State<HomePage> {
     await prefs.setString('my_recipes', encodedList);
   }
 
-  // --- ACTIONS ---
+  // --- ACTIONS: DICE ROLL ---
   void _rollDice() {
-    // 🔇 Sound Removed here per request
+    // 🔇 Sound Completely Removed per request
 
+    // 20% Chance: User Memory
     if (myRecipes.isNotEmpty && Random().nextInt(5) == 0) {
-      // Memory Roll Logic
       final randomRecipe = myRecipes[Random().nextInt(myRecipes.length)];
       setState(() {
+        currentRolledRecipe = randomRecipe;
+        canSaveRoll = false;
+
         currentMethod = randomRecipe.method;
         currentRatio = randomRecipe.ratio.isNotEmpty
             ? randomRecipe.ratio
@@ -153,41 +135,141 @@ class _HomePageState extends State<HomePage> {
         currentWildcard = "Try your '$origin' recipe!";
       });
     } else {
-      // Standard Roll
+      // 80% Chance: Pro Recipe
+      final proRecipe =
+          ProRecipes.list[Random().nextInt(ProRecipes.list.length)];
       setState(() {
-        currentMethod = brewingMethods[Random().nextInt(brewingMethods.length)];
-        currentRatio = coffeeRatios[Random().nextInt(coffeeRatios.length)];
-        currentWildcard = wildcards[Random().nextInt(wildcards.length)];
+        currentRolledRecipe = proRecipe;
+        canSaveRoll = true;
+        currentMethod = proRecipe.method;
+        currentRatio = proRecipe.ratio;
+        currentWildcard = proRecipe.notes.split('\n')[0];
       });
     }
   }
 
-  Future<void> _handleSaveRecipe(Recipe newRecipe) async {
-    // 🔊 SOUND: Success (MP3)
+  // --- ACTIONS: SAVE & STATS ---
+  Future<void> _saveRolledRecipe() async {
+    if (currentRolledRecipe == null) return;
     SoundManager().play('success.mp3');
 
+    Recipe newEntry = Recipe(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      method: currentRolledRecipe!.method,
+      beanOrigin: "Dice Roll (${currentRolledRecipe!.beanOrigin})",
+      roastLevel: currentRolledRecipe!.roastLevel,
+      grindSetting: currentRolledRecipe!.grindSetting,
+      doseWeight: currentRolledRecipe!.doseWeight,
+      waterWeight: currentRolledRecipe!.waterWeight,
+      waterTemp: currentRolledRecipe!.waterTemp,
+      ratio: currentRolledRecipe!.ratio,
+      brewTime: currentRolledRecipe!.brewTime,
+      notes: "Rolled on Coffee Dice!\n\n${currentRolledRecipe!.notes}",
+      date: DateTime.now(),
+      grinderId: activeGrinderId,
+    );
+
+    setState(() {
+      myRecipes.add(newEntry);
+      canSaveRoll = false;
+    });
+    await _saveData();
+    if (mounted)
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Saved to Journal!')));
+  }
+
+  Future<void> _handleSaveRecipe(Recipe newRecipe) async {
+    SoundManager().play('success.mp3');
     setState(() => myRecipes.add(newRecipe));
     await _saveData();
     if (mounted)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Recipe Saved! ☕'),
-          backgroundColor: Color(0xFF3E2723),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Recipe Saved! ☕')));
   }
 
   Future<void> _deleteRecipe(int index) async {
-    // 🔊 SOUND: Click (OGG)
     SoundManager().play('click.ogg');
-
     setState(() => myRecipes.removeAt(index));
     await _saveData();
-    if (mounted) {
+    if (mounted)
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Entry Deleted')));
+  }
+
+  // --- STATS QUICK ACTIONS ---
+  void _quickAddStat(String method) {
+    SoundManager().play('success.mp3');
+    Recipe quickEntry = Recipe(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      method: method,
+      beanOrigin: "Quick Log",
+      roastLevel: "Medium",
+      grindSetting: "Generic",
+      doseWeight: 0,
+      waterWeight: 0,
+      waterTemp: 0,
+      ratio: "-",
+      brewTime: "-",
+      notes: "Added via Stats Quick-Log",
+      date: DateTime.now(),
+      grinderId: activeGrinderId,
+    );
+    setState(() => myRecipes.add(quickEntry));
+    _saveData();
+    Navigator.pop(context);
+    _showStats();
+  }
+
+  void _quickRemoveStat(String method) {
+    int indexToRemove = -1;
+    for (int i = myRecipes.length - 1; i >= 0; i--) {
+      if (myRecipes[i].method == method) {
+        indexToRemove = i;
+        break;
+      }
     }
+
+    if (indexToRemove != -1) {
+      SoundManager().play('click.ogg');
+      setState(() => myRecipes.removeAt(indexToRemove));
+      _saveData();
+      Navigator.pop(context);
+      _showStats();
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No entries to remove!')));
+    }
+  }
+
+  // --- NAVIGATION HELPERS ---
+  void _openAddSheet() {
+    SoundManager().play('click.ogg');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardColor, // Adapts to theme
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => AddRecipeSheet(onSave: _handleSaveRecipe),
+    );
+  }
+
+  void _showStats() {
+    SoundManager().play('click.ogg');
+    showDialog(
+      context: context,
+      builder: (context) => StatsDialog(
+        recipes: myRecipes,
+        onQuickAdd: _quickAddStat,
+        onQuickRemove: _quickRemoveStat,
+      ),
+    );
   }
 
   void _editRecipeFromCard(int index) {
@@ -199,6 +281,21 @@ class _HomePageState extends State<HomePage> {
         index: index,
         onDelete: _deleteRecipe,
         useCelsius: useCelsius,
+      ),
+    );
+  }
+
+  void _showProfileSettings() {
+    SoundManager().play('click.ogg');
+    showDialog(
+      context: context,
+      builder: (context) => ProfileEditDialog(
+        currentName: nickname,
+        currentAge: age,
+        currentPronouns: pronouns,
+        currentBio: bio,
+        currentAvatar: avatarUrl,
+        onSave: _saveProfile,
       ),
     );
   }
@@ -226,42 +323,6 @@ class _HomePageState extends State<HomePage> {
     if (mounted) Navigator.pop(context);
   }
 
-  // --- NAVIGATION HELPERS ---
-  void _openAddSheet() {
-    SoundManager().play('click.ogg');
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => AddRecipeSheet(onSave: _handleSaveRecipe),
-    );
-  }
-
-  void _showStats() {
-    SoundManager().play('click.ogg');
-    showDialog(
-      context: context,
-      builder: (context) => StatsDialog(recipes: myRecipes),
-    );
-  }
-
-  void _showProfileSettings() {
-    SoundManager().play('click.ogg');
-    showDialog(
-      context: context,
-      builder: (context) => ProfileEditDialog(
-        currentName: nickname,
-        currentAge: age,
-        currentPronouns: pronouns,
-        currentBio: bio,
-        currentAvatar: avatarUrl,
-        onSave: _saveProfile,
-      ),
-    );
-  }
-
   void _openGrinderSettings() {
     SoundManager().play('click.ogg');
     Navigator.push(
@@ -274,6 +335,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return GestureDetector(
       onHorizontalDragEnd: (details) {
@@ -312,7 +374,10 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           leading: IconButton(
-            icon: Icon(Icons.menu, color: theme.iconTheme.color),
+            icon: Icon(
+              Icons.menu,
+              color: isDark ? Colors.white : const Color(0xFF3E2723),
+            ), // Fixed Icon Color
             onPressed: () {
               SoundManager().play('click.ogg');
               _scaffoldKey.currentState?.openDrawer();
@@ -323,12 +388,36 @@ class _HomePageState extends State<HomePage> {
         body: SafeArea(
           child: Column(
             children: [
-              DiceRoller(
-                method: currentMethod,
-                ratio: currentRatio,
-                wildcard: currentWildcard,
-                onRoll: _rollDice,
+              Column(
+                children: [
+                  DiceRoller(
+                    method: currentMethod,
+                    ratio: currentRatio,
+                    wildcard: currentWildcard,
+                    onRoll: _rollDice,
+                  ),
+                  if (canSaveRoll)
+                    TextButton.icon(
+                      onPressed: _saveRolledRecipe,
+                      icon: Icon(
+                        Icons.bookmark_add,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xFF3E2723),
+                      ),
+                      label: Text(
+                        "Save this Recipe",
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF3E2723),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
               ),
+
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Divider(),
@@ -345,7 +434,7 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       "MY JOURNAL",
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
                       ),
@@ -396,11 +485,16 @@ class _HomePageState extends State<HomePage> {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _openAddSheet,
-          backgroundColor: const Color(0xFF3E2723),
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text(
+          backgroundColor: isDark
+              ? Colors.white
+              : const Color(0xFF3E2723), // Adaptive FAB
+          icon: Icon(Icons.add, color: isDark ? Colors.black : Colors.white),
+          label: Text(
             "Log Brew",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: isDark ? Colors.black : Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),

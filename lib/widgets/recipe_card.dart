@@ -19,29 +19,29 @@ class RecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Dynamic Colors
+    final iconColor = isDark ? Colors.white : const Color(0xFF3E2723);
+    final iconBg = isDark
+        ? Colors.white12
+        : const Color(0xFF3E2723).withOpacity(0.1);
 
     return Dismissible(
       key: UniqueKey(),
+      movementDuration: const Duration(milliseconds: 600),
+      resizeDuration: const Duration(milliseconds: 500),
 
-      // --- MAKE IT SOFT ---
-      movementDuration: const Duration(
-        milliseconds: 600,
-      ), // Slower slide (was default ~200ms)
-      resizeDuration: const Duration(milliseconds: 500), // Slower collapse
-      // --- SWIPE RIGHT (EDIT) ---
       background: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 20),
         decoration: BoxDecoration(
           color: Colors.green[700],
-          borderRadius: BorderRadius.circular(
-            15,
-          ), // Rounds corners during swipe
+          borderRadius: BorderRadius.circular(15),
         ),
         child: const Icon(Icons.edit, color: Colors.white, size: 30),
       ),
 
-      // --- SWIPE LEFT (DELETE) ---
       secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
@@ -84,10 +84,13 @@ class RecipeCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3E2723).withOpacity(0.1),
+                    color: iconBg,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.coffee, color: Color(0xFF3E2723)),
+                  child: Icon(
+                    Icons.coffee,
+                    color: iconColor,
+                  ), // <--- FIXED VISIBILITY
                 ),
                 const SizedBox(width: 15),
                 Expanded(
@@ -104,7 +107,10 @@ class RecipeCard extends StatelessWidget {
                       ),
                       Text(
                         "${recipe.beanOrigin.isNotEmpty ? recipe.beanOrigin : 'Unknown Bean'} • ${recipe.doseWeight > 0 ? '${recipe.doseWeight}g' : recipe.grindSetting}",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),

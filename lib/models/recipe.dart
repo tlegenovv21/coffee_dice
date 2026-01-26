@@ -1,69 +1,70 @@
 // lib/models/recipe.dart
-
 class Recipe {
+  final String id; // <--- NEW
   final String method;
-  final String ratio;
-  final String waterTemp;
-  final String brewTime;
-  final String bloom;
   final String beanOrigin;
-  final String rating;
-
-  // --- NEW INTEGRATION FIELDS ---
-  final String? grinderId; // Links to the specific physical grinder
-  final String grindSetting; // The setting used (e.g. "14" or "3.5")
-  final double doseWeight; // Grams input (e.g. 18.0)
-  final int? rpm; // Optional: For high-end grinders
-  final double? burrGapMicrons; // Optional: For advanced users
-  final String calibrationNotes; // "Click 5 feels like 6 on my old one"
+  final String roastLevel;
+  final String grindSetting;
+  final double doseWeight;
+  final double waterWeight;
+  final double waterTemp;
+  final String ratio;
+  final String brewTime;
+  final String notes; // <--- NEW
+  final DateTime date;
+  final String grinderId;
 
   Recipe({
+    required this.id, // <--- NEW
     required this.method,
-    required this.ratio,
-    required this.waterTemp,
-    required this.brewTime,
-    required this.bloom,
     required this.beanOrigin,
-    required this.rating,
+    required this.roastLevel,
     required this.grindSetting,
-    this.grinderId,
-    this.doseWeight = 0.0,
-    this.rpm,
-    this.burrGapMicrons,
-    this.calibrationNotes = "",
+    required this.doseWeight,
+    required this.waterWeight,
+    required this.waterTemp,
+    required this.ratio,
+    required this.brewTime,
+    required this.notes, // <--- NEW
+    required this.date,
+    required this.grinderId,
   });
 
+  // Convert to JSON (Saving)
   Map<String, dynamic> toJson() => {
+    'id': id,
     'method': method,
-    'ratio': ratio,
-    'waterTemp': waterTemp,
-    'brewTime': brewTime,
-    'bloom': bloom,
     'beanOrigin': beanOrigin,
-    'rating': rating,
+    'roastLevel': roastLevel,
     'grindSetting': grindSetting,
-    'grinderId': grinderId,
     'doseWeight': doseWeight,
-    'rpm': rpm,
-    'burrGapMicrons': burrGapMicrons,
-    'calibrationNotes': calibrationNotes,
+    'waterWeight': waterWeight,
+    'waterTemp': waterTemp,
+    'ratio': ratio,
+    'brewTime': brewTime,
+    'notes': notes,
+    'date': date.toIso8601String(),
+    'grinderId': grinderId,
   };
 
+  // Create from JSON (Loading)
   factory Recipe.fromJson(Map<String, dynamic> json) {
     return Recipe(
+      // If 'id' is missing (old data), generate a temporary one
+      id: json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       method: json['method'] ?? "",
-      ratio: json['ratio'] ?? "",
-      waterTemp: json['waterTemp'] ?? "",
-      brewTime: json['brewTime'] ?? "",
-      bloom: json['bloom'] ?? "",
       beanOrigin: json['beanOrigin'] ?? "",
-      rating: json['rating'] ?? "",
-      grindSetting: json['grindSetting'] ?? json['grind'] ?? "",
-      grinderId: json['grinderId'],
-      doseWeight: (json['doseWeight'] ?? 0.0).toDouble(),
-      rpm: json['rpm'],
-      burrGapMicrons: (json['burrGapMicrons'] ?? 0.0).toDouble(),
-      calibrationNotes: json['calibrationNotes'] ?? "",
+      roastLevel: json['roastLevel'] ?? "",
+      grindSetting: json['grindSetting'] ?? "",
+      doseWeight: (json['doseWeight'] ?? 0).toDouble(),
+      waterWeight: (json['waterWeight'] ?? 0).toDouble(),
+      waterTemp: (json['waterTemp'] ?? 0).toDouble(),
+      ratio: json['ratio'] ?? "",
+      brewTime: json['brewTime'] ?? "",
+      // If 'notes' is missing (old data), use empty string
+      notes: json['notes'] ?? "",
+      date: DateTime.tryParse(json['date'] ?? "") ?? DateTime.now(),
+      grinderId: json['grinderId'] ?? "",
     );
   }
 }
