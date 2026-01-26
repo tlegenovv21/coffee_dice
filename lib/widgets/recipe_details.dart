@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/recipe.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart'; // Ensure this is imported
 
 class RecipeDetailsDialog extends StatelessWidget {
   final Recipe recipe;
@@ -99,6 +100,33 @@ class RecipeDetailsDialog extends StatelessWidget {
         ),
       ),
       actions: [
+        // --- SHARE BUTTON (TEXT ONLY) ---
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pop(context); // Close dialog
+
+            // Simple Share Text
+            String shareText =
+                """
+☕ My Brew: ${recipe.method}
+---------------------------
+🫘 Bean: ${recipe.beanOrigin}
+⚖️ Dose: ${recipe.doseWeight}g
+💧 Water: ${recipe.waterWeight}g
+⏱️ Time: ${recipe.brewTime}
+
+📝 Notes: ${recipe.notes}
+
+Shared via Coffee Dice App
+""";
+            Share.share(shareText);
+          },
+          icon: const Icon(Icons.share, size: 20),
+          label: const Text("Share"),
+          style: TextButton.styleFrom(foregroundColor: theme.primaryColor),
+        ),
+
+        // --------------------------------
         TextButton(
           onPressed: () {
             onDelete(index);

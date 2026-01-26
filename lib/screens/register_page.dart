@@ -1,23 +1,25 @@
-// lib/screens/login_page.dart
+// lib/screens/register_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class LoginPage extends StatefulWidget {
-  final VoidCallback showRegisterPage;
+class RegisterPage extends StatefulWidget {
+  final VoidCallback showLoginPage;
 
-  const LoginPage({super.key, required this.showRegisterPage});
+  const RegisterPage({super.key, required this.showLoginPage});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   // Text Controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
-  Future<void> signIn() async {
-    // 1. Show Loading Circle
+  // Sign Up Method
+  Future<void> signUp() async {
+    // 1. Loading Circle
     showDialog(
       context: context,
       builder: (context) => const Center(
@@ -25,18 +27,26 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
 
-    // 2. Try Sign In
+    // 2. Check if passwords match
+    if (_passwordController.text.trim() !=
+        _confirmPasswordController.text.trim()) {
+      Navigator.pop(context); // Close loading
+      _showError("Passwords do not match!");
+      return;
+    }
+
+    // 3. Try Creating User
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // If success, main.dart handles the switch. Close loader.
-      if (mounted) Navigator.pop(context);
+      // If successful, the StreamBuilder in main.dart will auto-switch to HomePage
+      if (mounted) Navigator.pop(context); // Close loading
     } on FirebaseAuthException catch (e) {
-      if (mounted) Navigator.pop(context); // Close loader
-      _showError(e.message ?? "Login failed");
+      if (mounted) Navigator.pop(context); // Close loading
+      _showError(e.message ?? "An error occurred");
     }
   }
 
@@ -44,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Login Failed"),
+        title: const Text("Registration Failed"),
         content: Text(message),
         actions: [
           TextButton(
@@ -60,12 +70,13 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Coffee Theme Colors
+    // Colors
     const coffeeColor = Color(0xFF3E2723);
     const creamColor = Color(0xFFF5F0E6);
 
@@ -77,78 +88,45 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo / Icon
-                const Icon(Icons.coffee, size: 100, color: coffeeColor),
+                const Icon(Icons.coffee_maker, size: 80, color: coffeeColor),
                 const SizedBox(height: 25),
 
-                // Welcome Text
                 const Text(
-                  "Welcome Back!",
+                  "Join the Brew Crew",
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: coffeeColor,
                   ),
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  "Time to roll the dice & brew",
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  "Register to track your coffee journey",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
-                const SizedBox(height: 50),
+                const SizedBox(height: 40),
 
-                // Email Input
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 20.0),
-                      child: TextField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Email',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // Email
+                _buildTextField(_emailController, "Email", false),
                 const SizedBox(height: 10),
 
-                // Password Input
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 20.0),
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Password',
-                        ),
-                      ),
-                    ),
-                  ),
+                // Password
+                _buildTextField(_passwordController, "Password", true),
+                const SizedBox(height: 10),
+
+                // Confirm Password
+                _buildTextField(
+                  _confirmPasswordController,
+                  "Confirm Password",
+                  true,
                 ),
                 const SizedBox(height: 20),
 
-                // Sign In Button
+                // Sign Up Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
                   child: GestureDetector(
-                    onTap: signIn,
+                    onTap: signUp,
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -157,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       child: const Center(
                         child: Text(
-                          "Sign In",
+                          "Sign Up",
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -168,20 +146,21 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 25),
 
-                // Register Link
+                // Toggle to Login
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      "Not a member? ",
+                      "Already a member? ",
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     GestureDetector(
-                      onTap: widget.showRegisterPage, // <--- The Fix!
+                      onTap: widget.showLoginPage,
                       child: const Text(
-                        "Register now",
+                        "Login now",
                         style: TextStyle(
                           color: Colors.blue,
                           fontWeight: FontWeight.bold,
@@ -191,6 +170,34 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint,
+    bool isPassword,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.white),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 20.0),
+          child: TextField(
+            controller: controller,
+            obscureText: isPassword,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: hint,
             ),
           ),
         ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sound_manager.dart';
+import '../screens/bean_stash_page.dart';
 
 class SideMenu extends StatefulWidget {
   final String nickname;
@@ -54,18 +55,34 @@ class _SideMenuState extends State<SideMenu> {
     });
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Color(0xFF3E2723),
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Standard color for icons/text to avoid purple
+    final isDark = theme.brightness == Brightness.dark;
+
     final Color coffeeColor = const Color(0xFF3E2723);
-    final Color iconColor = Colors.grey[600]!;
+    final Color iconColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
 
     return Drawer(
       backgroundColor: theme.scaffoldBackgroundColor,
       child: Column(
         children: [
-          // --- IMPROVED HEADER ---
+          // --- HEADER ---
           Container(
             padding: const EdgeInsets.only(
               top: 50,
@@ -74,7 +91,7 @@ class _SideMenuState extends State<SideMenu> {
               right: 20,
             ),
             width: double.infinity,
-            color: coffeeColor, // Solid Coffee Background
+            color: coffeeColor,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -131,6 +148,7 @@ class _SideMenuState extends State<SideMenu> {
               padding: EdgeInsets.zero,
               children: [
                 _buildSectionHeader("BREWING"),
+
                 SwitchListTile(
                   title: const Text("Units: °F / °C"),
                   subtitle: Text(
@@ -145,7 +163,7 @@ class _SideMenuState extends State<SideMenu> {
                     await prefs.setBool('pref_celsius', val);
                   },
                 ),
-                // --- NEW SOUND SWITCH ---
+
                 SwitchListTile(
                   title: const Text("Sound Effects"),
                   subtitle: Text(useSound ? "On" : "Off"),
@@ -153,21 +171,21 @@ class _SideMenuState extends State<SideMenu> {
                   activeColor: const Color(0xFF8D6E63),
                   secondary: Icon(
                     useSound ? Icons.volume_up : Icons.volume_off,
-                    color: Colors.grey[600],
+                    color: iconColor,
                   ),
                   onChanged: (val) async {
                     setState(() => useSound = val);
                     await SoundManager().toggleSound(val);
-                    // Play a test click so user knows it works
-                    if (val) SoundManager().play('click.mp3');
+                    if (val) SoundManager().play('click.ogg');
                   },
                 ),
+
                 ListTile(
                   leading: Icon(Icons.settings, color: iconColor),
                   title: const Text("My Grinder"),
                   subtitle: Text(
                     widget.currentGrinderName,
-                    style: TextStyle(color: coffeeColor),
+                    style: TextStyle(color: isDark ? Colors.grey : coffeeColor),
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                   onTap: () {
@@ -176,19 +194,22 @@ class _SideMenuState extends State<SideMenu> {
                   },
                 ),
 
-                const Divider(),
-                _buildSectionHeader("MY DATA"),
                 ListTile(
-                  leading: Icon(Icons.bar_chart, color: iconColor),
-                  title: const Text("My Coffee Stats"),
+                  leading: Icon(Icons.inventory_2, color: iconColor),
+                  title: const Text("Bean Stash"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                   onTap: () {
+                    SoundManager().play('click.ogg');
                     Navigator.pop(context);
-                    widget.onShowStats();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BeanStashPage(),
+                      ),
+                    );
                   },
                 ),
 
-                const Divider(),
-                _buildSectionHeader("APP INFO"),
                 SwitchListTile(
                   title: const Text("Dark Mode"),
                   value: !widget.isLightMode,
@@ -196,47 +217,56 @@ class _SideMenuState extends State<SideMenu> {
                   secondary: Icon(Icons.nightlight_round, color: iconColor),
                   onChanged: (val) => widget.onToggleTheme(),
                 ),
+
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Divider(),
+                ),
+
+                _buildSectionHeader("MY DATA"),
+
+                ListTile(
+                  leading: Icon(Icons.bar_chart, color: iconColor),
+                  title: const Text("My Coffee Stats"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.onShowStats();
+                  },
+                ),
+
+                ListTile(
+                  leading: Icon(Icons.person_outline, color: iconColor),
+                  title: const Text("Edit Profile"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.onEditProfile();
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.redAccent),
+                  title: const Text(
+                    "Log Out",
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await FirebaseAuth.instance.signOut();
+                  },
+                ),
+
+                const SizedBox(height: 30),
               ],
             ),
           ),
-
-          // --- BOTTOM ACTIONS ---
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.person_outline, color: iconColor),
-            title: const Text("Edit Profile"),
-            onTap: () {
-              Navigator.pop(context);
-              widget.onEditProfile();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              "Log Out",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-            onTap: () async {
-              await FirebaseAuth.instance.signOut();
-            },
-          ),
-          const SizedBox(height: 10),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Color(0xFF3E2723), // Fixed Brown Color (No Purple!)
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-          letterSpacing: 1.5,
-        ),
       ),
     );
   }

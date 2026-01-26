@@ -1,20 +1,15 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'services/sound_manager.dart'; // <--- Import the Sound Manager
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/sound_manager.dart';
 import 'screens/home_page.dart';
+import 'screens/auth_page.dart'; // <--- Import the Auth Page
 
 void main() async {
-  // 1. Ensure Flutter bindings are ready
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 2. Initialize Firebase
-  await Firebase.initializeApp(); // <--- FIXED
-
-  // 3. Initialize Sound System
+  await Firebase.initializeApp();
   await SoundManager().init();
-
-  // 4. Run the App
   runApp(const CoffeeDiceApp());
 }
 
@@ -26,7 +21,7 @@ class CoffeeDiceApp extends StatefulWidget {
 }
 
 class _CoffeeDiceAppState extends State<CoffeeDiceApp> {
-  // Default to light mode
+  // Default to light mode (or load from prefs if you prefer)
   bool isLightMode = true;
 
   void toggleTheme() {
@@ -92,7 +87,21 @@ class _CoffeeDiceAppState extends State<CoffeeDiceApp> {
               iconTheme: const IconThemeData(color: Colors.white70),
             ),
 
-      home: HomePage(isLightMode: isLightMode, onToggle: toggleTheme),
+      // --- THE GATEKEEPER ---
+      // This checks if the user is logged in or out
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // 1. User is logged in -> Show Home
+          if (snapshot.hasData) {
+            return HomePage(isLightMode: isLightMode, onToggle: toggleTheme);
+          }
+          // 2. User is logged out -> Show Auth (Login/Register)
+          else {
+            return const AuthPage();
+          }
+        },
+      ),
     );
   }
 }
