@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sound_manager.dart';
 import '../screens/bean_stash_page.dart';
+import '../screens/brew_timer_page.dart';
 
 class SideMenu extends StatefulWidget {
   final String nickname;
@@ -56,12 +57,16 @@ class _SideMenuState extends State<SideMenu> {
   }
 
   Widget _buildSectionHeader(String title) {
+    // Check if we are in Dark Mode
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Color(0xFF3E2723),
+        style: TextStyle(
+          // Use White/Grey for Dark Mode, Brown for Light Mode
+          color: isDark ? Colors.grey[400] : const Color(0xFF3E2723),
           fontWeight: FontWeight.bold,
           fontSize: 12,
           letterSpacing: 1.5,
@@ -177,6 +182,22 @@ class _SideMenuState extends State<SideMenu> {
                     setState(() => useSound = val);
                     await SoundManager().toggleSound(val);
                     if (val) SoundManager().play('click.ogg');
+                  },
+                ),
+
+                ListTile(
+                  leading: Icon(Icons.timer, color: iconColor),
+                  title: const Text("Brew Timer"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () {
+                    SoundManager().play('click.ogg');
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BrewTimerPage(),
+                      ),
+                    );
                   },
                 ),
 

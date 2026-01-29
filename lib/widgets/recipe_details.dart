@@ -2,7 +2,8 @@
 import 'package:flutter/material.dart';
 import '../models/recipe.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart'; // Ensure this is imported
+import 'package:share_plus/share_plus.dart';
+import '../screens/timer_page.dart';
 
 class RecipeDetailsDialog extends StatelessWidget {
   final Recipe recipe;
@@ -100,6 +101,25 @@ class RecipeDetailsDialog extends StatelessWidget {
         ),
       ),
       actions: [
+        // --- NEW: START BREW BUTTON ---
+        ElevatedButton.icon(
+          onPressed: () {
+            Navigator.pop(context); // Close the popup
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                // Use the recipe data to set the timer automatically
+                builder: (context) => TimerPage(recipe: recipe),
+              ),
+            );
+          },
+          icon: const Icon(Icons.timer, size: 20),
+          label: const Text("Start Brew"),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF3E2723), // Coffee Brown
+            foregroundColor: Colors.white,
+          ),
+        ),
         // --- SHARE BUTTON (TEXT ONLY) ---
         TextButton.icon(
           onPressed: () {

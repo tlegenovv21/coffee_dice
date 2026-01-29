@@ -31,7 +31,10 @@ class StatsDialog extends StatelessWidget {
       ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
 
     return AlertDialog(
-      backgroundColor: Theme.of(context).cardColor,
+      // Use a deep brown for Dark Mode, Cream for Light Mode
+      backgroundColor: isDark
+          ? const Color(0xFF2D1E1B)
+          : const Color(0xFFFFF8E1),
       title: Row(
         children: [
           Icon(Icons.analytics, color: iconColor),

@@ -1,7 +1,9 @@
+// lib/screens/timer_page.dart
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../models/recipe.dart';
+import '../services/sound_manager.dart'; // Import sound manager if you want sounds
 
 class TimerPage extends StatefulWidget {
   final Recipe recipe;
@@ -46,6 +48,9 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   void _toggleTimer() {
+    // Add sound effect
+    SoundManager().play('click.ogg');
+
     if (isRunning) {
       _timer?.cancel();
       setState(() => isRunning = false);
@@ -57,7 +62,10 @@ class _TimerPageState extends State<TimerPage> {
         } else {
           _timer?.cancel();
           setState(() => isRunning = false);
-          // TODO: Add Sound Effect here later!
+
+          // Sound Effect on Complete
+          SoundManager().play('success.mp3');
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("☕ Brew Complete! Enjoy!")),
           );
@@ -81,7 +89,10 @@ class _TimerPageState extends State<TimerPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    double percent = (totalSeconds - remainingSeconds) / totalSeconds;
+    // Avoid division by zero
+    double percent = totalSeconds > 0
+        ? (totalSeconds - remainingSeconds) / totalSeconds
+        : 0.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -128,7 +139,11 @@ class _TimerPageState extends State<TimerPage> {
                 ],
               ),
               progressColor: const Color(0xFF8D6E63), // Coffee Color
-              backgroundColor: theme.inputDecorationTheme.fillColor!,
+              // --- FIX IS HERE ---
+              // Changed from 'theme.inputDecorationTheme.fillColor!' to a safe Grey
+              backgroundColor: Colors.grey.withOpacity(0.2),
+
+              // -------------------
               circularStrokeCap: CircularStrokeCap.round,
               animation: true,
               animateFromLastPercent: true,
@@ -158,6 +173,7 @@ class _TimerPageState extends State<TimerPage> {
             const SizedBox(height: 20),
             TextButton(
               onPressed: () {
+                SoundManager().play('click.ogg');
                 _timer?.cancel();
                 setState(() {
                   isRunning = false;

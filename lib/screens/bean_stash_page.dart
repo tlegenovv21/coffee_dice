@@ -1,5 +1,6 @@
 // lib/screens/bean_stash_page.dart
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -16,7 +17,7 @@ class BeanStashPage extends StatefulWidget {
 class _BeanStashPageState extends State<BeanStashPage> {
   List<CoffeeBean> myBeans = [];
 
-  // Controllers
+  // Inputs
   final _nameController = TextEditingController();
   final _roasterController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
@@ -46,8 +47,96 @@ class _BeanStashPageState extends State<BeanStashPage> {
     await prefs.setString('my_beans', encoded);
   }
 
+  // --- SMART TIP ENGINE ---
+  void _showSmartTip(String beanName, int days) {
+    SoundManager().play('click.ogg');
+
+    // 1. Define Tips based on Age
+    List<String> tips = [];
+    String title = "";
+    Color color = Colors.brown;
+
+    if (days <= 3) {
+      title = "💤 Resting Phase";
+      color = Colors.orange;
+      tips = [
+        "Too much CO2! Your brew might taste sour or bubbly.",
+        "Patience. Let it degas for another day.",
+        "If you must brew now, try a longer bloom (1 min).",
+        "The flavors are still waking up.",
+      ];
+    } else if (days <= 14) {
+      title = "🌟 Peak Flavor";
+      color = Colors.green;
+      tips = [
+        "It doesn't get better than this! Brew now.",
+        "You are in the Goldilocks zone. Enjoy!",
+        "Perfect time for a V60 or Chemex.",
+        "Look for those floral and fruity notes today.",
+        "Don't save this for later. Drink it!",
+      ];
+    } else if (days <= 45) {
+      title = "☕ Reliable & Tasty";
+      color = Colors.teal;
+      tips = [
+        "Still fresh, but maybe grind one step finer.",
+        "Great for daily drinking.",
+        "If it tastes flat, increase your water temp.",
+        "Consistency is key in this phase.",
+        "Try an Aeropress for more body.",
+      ];
+    } else {
+      title = "🕰️ Old Beans";
+      color = Colors.grey;
+      tips = [
+        "Flavor fading? Try Cold Brew.",
+        "Perfect for milk-based drinks.",
+        "Grind significantly finer to extract more flavor.",
+        "Up your dose (use more coffee) to combat flavor loss.",
+        "Time to buy new beans!",
+      ];
+    }
+
+    // 2. Pick Random Tip
+    String randomTip = tips[Random().nextInt(tips.length)];
+
+    // 3. Show Dialog
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.lightbulb, color: color),
+            const SizedBox(width: 10),
+            Text(title, style: TextStyle(fontSize: 18, color: color)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "For: $beanName",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "\"$randomTip\"",
+              style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 16),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Got it"),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _addBean() {
-    // Reset inputs
     _nameController.clear();
     _roasterController.clear();
     _selectedDate = DateTime.now();
@@ -133,7 +222,7 @@ class _BeanStashPageState extends State<BeanStashPage> {
                     );
 
                     setState(() {
-                      myBeans.insert(0, newBean); // Add to top
+                      myBeans.insert(0, newBean);
                     });
                     _saveBeans();
                     Navigator.pop(context);
@@ -189,16 +278,24 @@ class _BeanStashPageState extends State<BeanStashPage> {
                 final bean = myBeans[index];
                 final days = bean.daysOffRoast;
 
-                // Freshness Logic
-                Color badgeColor = Colors.green;
-                String badgeText = "FRESH";
-                if (days < 3) {
+                // --- 4-STAGE FRESHNESS LOGIC ---
+                Color badgeColor;
+                String badgeText;
+
+                if (days <= 3) {
                   badgeColor = Colors.orange;
-                  badgeText = "RESTING"; // Too fresh
-                } else if (days > 45) {
+                  badgeText = "RESTING";
+                } else if (days <= 14) {
+                  badgeColor = Colors.green;
+                  badgeText = "PEAK"; // The new "Goldilocks" phase
+                } else if (days <= 45) {
+                  badgeColor = Colors.teal;
+                  badgeText = "FRESH";
+                } else {
                   badgeColor = Colors.grey;
                   badgeText = "OLD";
                 }
+                // ------------------------------
 
                 return Dismissible(
                   key: Key(bean.id),
@@ -210,95 +307,102 @@ class _BeanStashPageState extends State<BeanStashPage> {
                     child: const Icon(Icons.delete, color: Colors.white),
                   ),
                   onDismissed: (_) => _deleteBean(bean.id),
-                  child: Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 2,
-                    color: theme.cardColor,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          // Icon / Badge
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: badgeColor.withOpacity(0.1),
-                              shape: BoxShape.circle,
+                  child: GestureDetector(
+                    onTap: () =>
+                        _showSmartTip(bean.name, days), // <--- TAP TRIGGER
+                    child: Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      elevation: 2,
+                      color: theme.cardColor,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            // Icon / Badge
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: badgeColor.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.inventory_2,
+                                  color: badgeColor,
+                                ),
+                              ),
                             ),
-                            child: Center(
-                              child: Icon(Icons.inventory_2, color: badgeColor),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
+                            const SizedBox(width: 15),
 
-                          // Details
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            // Details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bean.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    bean.roaster.isNotEmpty
+                                        ? bean.roaster
+                                        : "Unknown Roaster",
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Days Counter
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  bean.name,
+                                  "$days",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 22,
                                     color: textColor,
                                   ),
                                 ),
-                                Text(
-                                  bean.roaster.isNotEmpty
-                                      ? bean.roaster
-                                      : "Unknown Roaster",
+                                const Text(
+                                  "days",
                                   style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    badgeText,
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-
-                          // Days Counter
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                "$days",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 22,
-                                  color: textColor,
-                                ),
-                              ),
-                              const Text(
-                                "days",
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: badgeColor,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  badgeText,
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
